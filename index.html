@@ -99,6 +99,13 @@
   #resultado .of { color: var(--muted); font-size: 1.1rem; }
   #resultado .status { margin-top: 10px; font-size: .9rem; min-height: 1.3em; color: var(--ok); font-weight: 600; }
   #resultado .status.warn { color: var(--err); }
+  #rRevision { text-align: left; margin-top: 18px; }
+  #rRevision h3 { margin: 0 0 12px; text-align: center; color: var(--brand-dark); }
+  .rev-item { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .rev-q { font-weight: 600; margin-bottom: 8px; }
+  .rev-bad { color: var(--err); background: #fef2f2; border-radius: 8px; padding: 6px 10px; margin-bottom: 6px; }
+  .rev-good { color: #166534; background: #f0fdf4; border-radius: 8px; padding: 6px 10px; }
+  .rev-perfect { text-align: center; font-weight: 700; color: var(--ok); background: #f0fdf4; border-radius: 12px; padding: 14px; }
 
   /* ---------- Administración ---------- */
   header { position: relative; }
@@ -222,6 +229,7 @@
     <div class="score" id="rPuntaje">0</div>
     <div class="of">puntos de 100</div>
     <div class="status" id="rEstado" role="status"></div>
+    <div id="rRevision"></div>
   </section>
 </main>
 
@@ -482,11 +490,13 @@ $("btnEnviar").addEventListener("click", () => {
   }
 
   const L = LECTURAS[grupoActual];
-  let puntos = 0, sinResponder = [];
+  let puntos = 0, sinResponder = [], falladas = [];
   L.preguntas.forEach((p, i) => {
     const marcada = document.querySelector(`input[name="p${i}"]:checked`);
     if (!marcada) { sinResponder.push(i + 1); return; }
-    if (p.orden[parseInt(marcada.value, 10)].c) puntos += 25;
+    const elegida = p.orden[parseInt(marcada.value, 10)];
+    if (elegida.c) puntos += 25;
+    else falladas.push({ n: i + 1, q: p.q, tu: elegida.t, ok: p.o.find(o => o.c).t });
   });
 
   if (sinResponder.length) {
@@ -501,7 +511,19 @@ $("btnEnviar").addEventListener("click", () => {
   $("resultado").style.display = "block";
   $("btnEnviar").disabled = true;
   enviado = true;
-  $("resultado").scrollIntoView({ behavior: "smooth", block: "center" });
+  document.querySelectorAll("#preguntas input").forEach(inp => { inp.disabled = true; });
+
+  // Revisión: preguntas falladas con la respuesta correcta
+  $("rRevision").innerHTML = falladas.length
+    ? `<h3>Revisa tus errores</h3>` + falladas.map(f => `
+        <div class="rev-item">
+          <div class="rev-q">${f.n}. ${escapar(f.q)}</div>
+          <div class="rev-bad">✘ Tu respuesta: ${escapar(f.tu)}</div>
+          <div class="rev-good">✔ Respuesta correcta: ${escapar(f.ok)}</div>
+        </div>`).join("")
+    : `<div class="rev-perfect">🎉 ¡Excelente! Respondiste todas las preguntas correctamente.</div>`;
+
+  $("resultado").scrollIntoView({ behavior: "smooth", block: "start" });
 
   const st = $("rEstado");
   st.className = "status";
